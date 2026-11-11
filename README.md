@@ -66,6 +66,7 @@ af-aroma-bridge --address XX:XX:XX:XX:XX:XX --port 8765 --token CHANGE_ME
 | POST | `/power` | `{"on": true}` |
 | POST | `/spray` | |
 | POST | `/key-lock` | `{"on": false}` |
+| POST | `/oil-reset` | |
 | POST | `/sync-time` | |
 | POST | `/groups/<n>` | any of `start`, `end`, `spray_s`, `pause_s`, `days`, `enabled` |
 

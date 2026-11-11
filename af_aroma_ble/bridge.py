@@ -6,6 +6,7 @@ GET  /status            cached for --cache seconds
 POST /power             {"on": true|false}
 POST /spray
 POST /key-lock          {"on": true|false}
+POST /oil-reset        (after a refill: resets the oil level counter)
 POST /sync-time        (also done daily at --sync-at; a clock write triggers one spray)
 POST /groups/<n>        {"start": "08:00", "end": "20:00", "spray_s": 5, "pause_s": 900,
                          "days": ["mon", ...], "enabled": true}   (missing fields keep their current value)
@@ -123,6 +124,8 @@ def make_handler(bridge: Bridge, token: str | None):
                 return self._guard(lambda: bridge.run(lambda d: d.set_key_lock(bool(body.get("on", True)))).__dict__)
             if path == "/spray":
                 return self._guard(lambda: bridge.run(lambda d: d.spray_now()))
+            if path == "/oil-reset":
+                return self._guard(lambda: bridge.run(lambda d: d.reset_oil_level()) or {"ok": True})
             if path == "/sync-time":
                 return self._guard(lambda: bridge.run(lambda d: d.sync_time()) or {"ok": True})
             if path.startswith("/groups/"):
@@ -136,6 +139,8 @@ def make_handler(bridge: Bridge, token: str | None):
         def _guard(self, fn):
             try:
                 self._send(200, fn())
+            except ValueError as e:
+                self._send(400, {"error": str(e)})
             except AFAromaError as e:
                 self._send(503, {"error": str(e)})
             except Exception as e:  # keep the server alive whatever happens
@@ -153,9 +158,9 @@ async def _update_group(dev, n: int, body: dict):
     if "end" in body:
         g.end = body["end"]
     if "spray_s" in body:
-        g.spray_s = int(body["spray_s"])
+        g.spray_s = int(float(body["spray_s"]))
     if "pause_s" in body:
-        g.pause_s = int(body["pause_s"])
+        g.pause_s = int(float(body["pause_s"]))
     if "days" in body:
         wanted = {d.lower()[:3] for d in body["days"]}
         g.days = [d in wanted for d in P.DAYS]
@@ -163,6 +168,8 @@ async def _update_group(dev, n: int, body: dict):
         g.state = P.GROUP_ENABLED if body["enabled"] else P.GROUP_DISABLED
     elif g.state == P.GROUP_EMPTY:
         g.state = P.GROUP_ENABLED
+    if g.start >= g.end:
+        raise ValueError(f"start {g.start} must be before end {g.end} (windows can't cross midnight)")
     await dev.write_group(g)
     return [x.to_dict() for x in await dev.groups()]
 

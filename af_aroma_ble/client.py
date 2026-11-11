@@ -229,6 +229,8 @@ async def with_retries(address: str, fn, *, attempts: int = 3, delay: float = 5.
         try:
             async with AFAroma(address, sync_time=sync_time) as d:
                 return await fn(d)
+        except ValueError:
+            raise  # bad input, retrying won't help
         except Exception as e:  # bleak raises a mix of exception types
             last = e
             _LOG.warning("attempt %d/%d failed: %s", i + 1, attempts, e)
