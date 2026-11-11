@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "af-aroma-ble"
+version = "0.1.0"
+description = "Local Bluetooth LE control for AF Aroma (Zhuhai Rongyuan) waterless scent diffusers"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = ["bleak>=0.21"]
+keywords = ["bluetooth", "ble", "diffuser", "aroma", "home-assistant", "af-aroma"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: Home Automation",
+]
+
+[project.urls]
+Homepage = "https://github.com/jflaloux/af-aroma-ble"
+
+[project.scripts]
+af-aroma = "af_aroma_ble.cli:main"
+af-aroma-bridge = "af_aroma_ble.bridge:main"
+
+[tool.setuptools]
+packages = ["af_aroma_ble"]
