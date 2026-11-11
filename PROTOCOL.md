@@ -28,7 +28,7 @@ Right after enabling notifications on `FFF2`, the client must authenticate itsel
 2. Device replies with a packet of at least 12 bytes starting with `07`. Byte 4 of the reply must equal `expected`.
 3. Client answers `08 s0 s1 s2 s3 s4 s5` with six random bytes, except `s3`, which must be `reply[10] ^ (reply[8] | reply[11])`.
 
-The official app then reads the app password (opcode `10`, see below) and syncs the clock.
+The official app then reads the app password (opcode `10`, see below) and syncs the clock, which makes the unit spray (see Weekday code).
 
 ## Commands
 
@@ -70,6 +70,8 @@ The clock packet carries a weekday code that is **not** a plain Monday=0 numberi
 | Friday | 4 |
 | Saturday | 5 |
 | Sunday | 6 |
+
+Writing the clock restarts the active group's cycle, so it causes a spray if a group is active. Avoid syncing on every connection.
 
 Tuesday and Wednesday are swapped, and the firmware agrees with it: on a Wednesday synced with code 1, a group with only the Wednesday flag set is active and a group with only the Tuesday flag set is not.
 

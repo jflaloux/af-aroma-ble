@@ -34,7 +34,7 @@ af-aroma clear-group 2
 af-aroma raw 02 1101                            # send raw packets, print the replies
 ```
 
-Every connection syncs the diffuser clock, the same as the official app does. Commands retry a few times, because a weak link or a reconnect right after a disconnect can fail once.
+Commands retry a few times, because a weak link or a reconnect right after a disconnect can fail once. Unlike the official app, connecting does not set the diffuser clock: a clock write restarts the active cycle and causes a spray. Run `af-aroma sync-time` when you need it; the bridge does it once a day at 04:00 (`--sync-at`).
 
 ## Library
 
@@ -75,6 +75,7 @@ af-aroma-bridge --address XX:XX:XX:XX:XX:XX --port 8765 --token CHANGE_ME
 
 - **Spray on demand:** there is no real "spray now" command. `spray` rewrites the active schedule group unchanged, which restarts its cycle with a spray, so it only works inside an active time window.
 - **Test mode:** the "test mode" command from the app is accepted but ignored by the AP105 firmware.
+- **Clock sync sprays:** setting the clock restarts the active cycle, so it sprays once if a group is active. The official app syncs on every connection, which is why the unit sprays when you open the app.
 - **Password:** the app password is not enforced by the device (see PROTOCOL.md), so treat Bluetooth range as the only access control.
 
 ## Disclaimer

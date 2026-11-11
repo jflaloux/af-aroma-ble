@@ -6,7 +6,7 @@ GET  /status            cached for --cache seconds
 POST /power             {"on": true|false}
 POST /spray
 POST /key-lock          {"on": true|false}
-POST /sync-time
+POST /sync-time        (also done daily at --sync-at; a clock write triggers one spray)
 POST /groups/<n>        {"start": "08:00", "end": "20:00", "spray_s": 5, "pause_s": 900,
                          "days": ["mon", ...], "enabled": true}   (missing fields keep their current value)
 
@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import datetime
 import json
 import logging
 import os
@@ -31,7 +32,7 @@ _LOG = logging.getLogger("af_aroma_ble.bridge")
 
 
 class Bridge:
-    def __init__(self, address: str, cache_s: float):
+    def __init__(self, address: str, cache_s: float, sync_at: str | None = "04:00"):
         self.address = address
         self.cache_s = cache_s
         self._loop = asyncio.new_event_loop()
@@ -39,6 +40,25 @@ class Bridge:
         self._lock = asyncio.Lock()
         self._status = None
         self._status_at = 0.0
+        if sync_at:
+            asyncio.run_coroutine_threadsafe(self._daily_sync(sync_at), self._loop)
+
+    async def _daily_sync(self, at: str):
+        """Keep the diffuser clock right. A clock write restarts the active cycle (one spray),
+        so do it once a day at a time when the schedule is normally idle."""
+        hh, mm = (int(x) for x in at.split(":"))
+        while True:
+            now = datetime.datetime.now()
+            nxt = now.replace(hour=hh, minute=mm, second=0, microsecond=0)
+            if nxt <= now:
+                nxt += datetime.timedelta(days=1)
+            await asyncio.sleep((nxt - now).total_seconds())
+            try:
+                async with self._lock:
+                    await with_retries(self.address, lambda d: d.sync_time())
+                _LOG.info("clock synced")
+            except Exception as e:
+                _LOG.warning("daily clock sync failed: %s", e)
 
     def run(self, fn, invalidate=True):
         async def guarded():
@@ -154,12 +174,14 @@ def main(argv=None) -> None:
     ap.add_argument("--port", type=int, default=int(os.environ.get("AF_AROMA_PORT", "8765")))
     ap.add_argument("--token", default=os.environ.get("AF_AROMA_TOKEN"))
     ap.add_argument("--cache", type=float, default=float(os.environ.get("AF_AROMA_CACHE", "30")), help="seconds to cache /status")
+    ap.add_argument("--sync-at", default=os.environ.get("AF_AROMA_SYNC_AT", "04:00"),
+                    help="daily HH:MM to set the diffuser clock, or 'off' (a clock write sprays once if a group is active)")
     ap.add_argument("--debug", action="store_true")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     if not args.token:
         _LOG.warning("no --token set: anyone who can reach this port can control the diffuser")
-    bridge = Bridge(args.address, args.cache)
+    bridge = Bridge(args.address, args.cache, None if args.sync_at == "off" else args.sync_at)
     server = ThreadingHTTPServer((args.host, args.port), make_handler(bridge, args.token))
     _LOG.info("listening on %s:%d for %s", args.host, args.port, args.address)
     server.serve_forever()

@@ -33,9 +33,11 @@ class AFAroma:
     """Connect, do the handshake, then send commands. Use as an async context manager.
 
     The diffuser accepts a single Bluetooth connection, so close the phone app first.
+    sync_time=True sets the clock on connect, like the official app, but note that a clock
+    write restarts the active cycle, so it triggers a spray.
     """
 
-    def __init__(self, address: str, *, sync_time: bool = True, connect_timeout: float = 20.0):
+    def __init__(self, address: str, *, sync_time: bool = False, connect_timeout: float = 20.0):
         self.address = address
         self.sync_time_on_connect = sync_time
         self.connect_timeout = connect_timeout
@@ -163,6 +165,7 @@ class AFAroma:
     # writes --------------------------------------------------------------
 
     async def sync_time(self, now=None) -> None:
+        """Set the clock. Restarts the active cycle, so it sprays if a group is active."""
         await self._write(P.time_sync(now))
         await asyncio.sleep(0.2)
 
@@ -207,7 +210,7 @@ class AFAroma:
         await self._write(P.oil_level_reset())
 
 
-async def with_retries(address: str, fn, *, attempts: int = 3, delay: float = 5.0, sync_time: bool = True):
+async def with_retries(address: str, fn, *, attempts: int = 3, delay: float = 5.0, sync_time: bool = False):
     """Run fn(device) inside a fresh connection, retrying on Bluetooth hiccups."""
     last = None
     for i in range(attempts):
