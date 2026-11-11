@@ -54,7 +54,7 @@ Field notes:
 - `err` is an error code, 0 when fine. `grp` is the active schedule group (0-based) or `FF` when none is active. `cyc` is the cycle state: 0 idle, 1 pausing, 2 spraying.
 - `SS SS` is the spray time in seconds, `PP PP` the pause time in seconds. The AP105 reports a pause range of 5 to 900 s in steps of 5 (opcode `09`).
 - `st` is the group state: 0 empty, 1 enabled, 2 disabled. `d0..d6` are day flags, Monday first, 1 = active.
-- In the options block, `power` is 1 for on, `lock` is 1 when the buttons on the unit are locked, `fan` is the fan gear (0 = off) and `oil` is the remaining oil level the app tracks. Because the block is written as a whole, read it first and write it back with only the field you want to change.
+- In the options block, `power` is 1 for on, `lock` is 1 when the buttons on the unit are locked (only on models whose capabilities report `hasLock`; the AP105 does not and ignores it), `fan` is the fan gear (0 = off) and `oil` is the remaining oil level the app tracks. Because the block is written as a whole, read it first and write it back with only the field you want to change.
 - Groups have priority in order: when windows overlap, the lowest group number wins.
 
 ## Weekday code

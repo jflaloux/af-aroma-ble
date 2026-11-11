@@ -26,7 +26,7 @@ export AF_AROMA_ADDRESS=XX:XX:XX:XX:XX:XX
 af-aroma status                                 # power, key lock, oil, cycle, schedule groups
 af-aroma on | off
 af-aroma spray                                  # one spray now (needs an active schedule group)
-af-aroma lock | unlock                          # lock the buttons on the unit
+af-aroma lock | unlock                          # lock the buttons (only if status/config reports has_lock)
 af-aroma sync-time
 af-aroma set-group 1 --start 08:00 --end 20:00 --spray 5 --pause 900 --days all
 af-aroma set-group 2 --start 19:00 --end 22:00 --pause 300 --days mon,tue,wed,thu,fri
@@ -76,6 +76,7 @@ af-aroma-bridge --address XX:XX:XX:XX:XX:XX --port 8765 --token CHANGE_ME
 
 - **Spray on demand:** there is no real "spray now" command. `spray` rewrites the active schedule group unchanged, which restarts its cycle with a spray, so it only works inside an active time window.
 - **Test mode:** the "test mode" command from the app is accepted but ignored by the AP105 firmware.
+- **Button lock:** only some models have it. The AP105 reports `has_lock` false and ignores a lock write.
 - **Clock sync sprays:** setting the clock restarts the active cycle, so it sprays once if a group is active. The official app syncs on every connection, which is why the unit sprays when you open the app.
 - **Password:** the app password is not enforced by the device (see PROTOCOL.md), so treat Bluetooth range as the only access control.
 
