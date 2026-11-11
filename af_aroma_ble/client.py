@@ -199,8 +199,20 @@ class AFAroma:
         idx = home["active_group"] - 1
         for g in await self.groups():
             if g.index == idx:
-                await self.write_group(g)
-                return await self.home()
+                await self._drain(0)
+                await self._write(g.encode())
+                # The device pushes a 0x02 status when the cycle restarts; wait for "spraying".
+                loop = asyncio.get_running_loop()
+                end = loop.time() + 4.0
+                last = None
+                while loop.time() < end:
+                    try:
+                        last = P.decode(await self._wait_for(P.OP_HOME, timeout=end - loop.time()))
+                    except AFAromaError:
+                        break
+                    if last.get("cycle") == "spraying":
+                        return last
+                raise AFAromaError(f"group rewritten but the device did not report a spray (last status: {last})")
         raise AFAromaError("could not read the active group")
 
     async def rename(self, name: str) -> None:
