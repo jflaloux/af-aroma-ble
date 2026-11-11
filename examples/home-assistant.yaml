@@ -1,0 +1,84 @@
+# Home Assistant configuration for the af-aroma-bridge.
+# Put the bridge URLs and token in secrets.yaml:
+#   af_aroma_status_url: http://192.168.1.50:8765/status
+#   af_aroma_power_url: http://192.168.1.50:8765/power
+#   af_aroma_spray_url: http://192.168.1.50:8765/spray
+#   af_aroma_group1_url: http://192.168.1.50:8765/groups/1
+#   af_aroma_auth: "Bearer CHANGE_ME"
+
+rest:
+  - resource: !secret af_aroma_status_url   # e.g. http://192.168.1.50:8765/status
+    headers:
+      Authorization: !secret af_aroma_auth
+    scan_interval: 300
+    timeout: 60
+    binary_sensor:
+      - name: Diffuser power
+        unique_id: af_aroma_power
+        value_template: "{{ value_json.power }}"
+    sensor:
+      - name: Diffuser cycle
+        unique_id: af_aroma_cycle
+        value_template: "{{ value_json.cycle }}"
+      - name: Diffuser active group
+        unique_id: af_aroma_active_group
+        value_template: "{{ value_json.active_group or 'none' }}"
+      - name: Diffuser pause
+        unique_id: af_aroma_pause
+        unit_of_measurement: s
+        value_template: >
+          {% set g = value_json.groups | selectattr('state', 'eq', 'enabled') | list %}
+          {{ g[0].pause_s if g else none }}
+
+rest_command:
+  af_aroma_power:
+    url: !secret af_aroma_power_url          # e.g. http://192.168.1.50:8765/power
+    method: post
+    headers:
+      Authorization: !secret af_aroma_auth
+    content_type: application/json
+    payload: '{"on": {{ on | tojson }}}'
+    timeout: 60
+  af_aroma_spray:
+    url: !secret af_aroma_spray_url          # e.g. http://192.168.1.50:8765/spray
+    method: post
+    headers:
+      Authorization: !secret af_aroma_auth
+    timeout: 60
+  af_aroma_group:
+    url: !secret af_aroma_group1_url         # e.g. http://192.168.1.50:8765/groups/1
+    method: post
+    headers:
+      Authorization: !secret af_aroma_auth
+    content_type: application/json
+    payload: "{{ body | tojson }}"
+    timeout: 60
+
+template:
+  - switch:
+      - name: Diffuser
+        unique_id: af_aroma_switch
+        state: "{{ is_state('binary_sensor.diffuser_power', 'on') }}"
+        turn_on:
+          - action: rest_command.af_aroma_power
+            data: { on: true }
+          - action: homeassistant.update_entity
+            target: { entity_id: binary_sensor.diffuser_power }
+        turn_off:
+          - action: rest_command.af_aroma_power
+            data: { on: false }
+          - action: homeassistant.update_entity
+            target: { entity_id: binary_sensor.diffuser_power }
+  - button:
+      - name: Diffuser spray now
+        unique_id: af_aroma_spray
+        press:
+          - action: rest_command.af_aroma_spray
+
+# Example automation: lighter scent in the evening.
+# automation:
+#   - alias: Diffuser evening intensity
+#     triggers: [{ trigger: time, at: "19:00:00" }]
+#     actions:
+#       - action: rest_command.af_aroma_group
+#         data: { body: { pause_s: 600 } }

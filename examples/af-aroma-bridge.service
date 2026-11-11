@@ -1,0 +1,18 @@
+# Copy to /etc/systemd/system/af-aroma-bridge.service, adjust User and the environment, then:
+#   sudo systemctl daemon-reload && sudo systemctl enable --now af-aroma-bridge
+[Unit]
+Description=AF Aroma diffuser HTTP bridge
+After=bluetooth.target network-online.target
+Wants=bluetooth.target network-online.target
+
+[Service]
+User=pi
+Environment=AF_AROMA_ADDRESS=XX:XX:XX:XX:XX:XX
+Environment=AF_AROMA_TOKEN=CHANGE_ME
+Environment=AF_AROMA_PORT=8765
+ExecStart=/usr/bin/env af-aroma-bridge
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
